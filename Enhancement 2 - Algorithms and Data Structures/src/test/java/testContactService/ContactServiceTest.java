@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import contactService.Contact;
 import contactService.ContactService;
@@ -169,10 +170,90 @@ class ContactServiceTest {
 		service.addContact(contact1);
 		service.addContact(contact2);
 
-		ArrayList<Contact> all = service.listAll();
+		List<Contact> all = service.listAll();
 
 		Assertions.assertEquals("Adams", all.get(0).getLastName());
 		Assertions.assertEquals("Zimmerman", all.get(1).getLastName());
+	}
+
+	@Test
+	@DisplayName("Test that listAll stays correctly sorted after a contact in the middle is deleted")
+	void testListAllStaysSortedAfterDelete() {
+		Contact contact1 = new Contact("0001", "John", "Adams", "5731234567", "11 Broadway St, Springfield MO");
+		Contact contact2 = new Contact("0002", "Cheyenne", "Miller", "5731234567", "123 Lauren Ln, Naylor MO");
+		Contact contact3 = new Contact("0003", "Bob", "Zimmerman", "3141234567", "1 Main St, Anytown MO");
+
+		service.addContact(contact1);
+		service.addContact(contact2);
+		service.addContact(contact3);
+
+		service.deleteContact("0002");
+
+		List<Contact> all = service.listAll();
+
+		Assertions.assertEquals(2, all.size());
+		Assertions.assertEquals("Adams", all.get(0).getLastName());
+		Assertions.assertEquals("Zimmerman", all.get(1).getLastName());
+	}
+
+	@Test
+	@DisplayName("Test that listAll reflects a contact's new position after its last name changes")
+	void testListAllStaysSortedAfterRename() {
+		Contact contact1 = new Contact("0001", "John", "Adams", "5731234567", "11 Broadway St, Springfield MO");
+		Contact contact2 = new Contact("0002", "Cheyenne", "Miller", "5731234567", "123 Lauren Ln, Naylor MO");
+
+		service.addContact(contact1);
+		service.addContact(contact2);
+
+		service.updateLastName("0001", "Zimmerman");
+
+		List<Contact> all = service.listAll();
+
+		Assertions.assertEquals("Miller", all.get(0).getLastName());
+		Assertions.assertEquals("Zimmerman", all.get(1).getLastName());
+	}
+
+	@Test
+	@DisplayName("Test that deleting one of two contacts sharing a full name removes the correct one")
+	void testDeleteContactWithDuplicateNameRemovesCorrectOne() {
+		Contact contact1 = new Contact("0001", "Dalton", "Young", "5731234567", "11 Broadway St, Springfield MO");
+		Contact contact2 = new Contact("0002", "Dalton", "Young", "4171234567", "123 Lauren Ln, Naylor MO");
+
+		service.addContact(contact1);
+		service.addContact(contact2);
+
+		service.deleteContact("0001");
+
+		List<Contact> all = service.listAll();
+
+		Assertions.assertEquals(1, all.size());
+		Assertions.assertEquals(contact2, all.get(0));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			service.getContact("0001");
+		});
+	}
+
+	@Test
+	@DisplayName("Test that deleting from a block of three contacts sharing a name still finds the exact one")
+	void testDeleteContactWithThreeDuplicateNamesRemovesCorrectOne() {
+		Contact contact1 = new Contact("0001", "Dalton", "Young", "5731234567", "11 Broadway St, Springfield MO");
+		Contact contact2 = new Contact("0002", "Dalton", "Young", "4171234567", "123 Lauren Ln, Naylor MO");
+		Contact contact3 = new Contact("0003", "Dalton", "Young", "3141234567", "1 Main St, Anytown MO");
+
+		service.addContact(contact1);
+		service.addContact(contact2);
+		service.addContact(contact3);
+
+		service.deleteContact("0001");
+
+		List<Contact> all = service.listAll();
+
+		Assertions.assertEquals(2, all.size());
+		Assertions.assertTrue(all.contains(contact2));
+		Assertions.assertTrue(all.contains(contact3));
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			service.getContact("0001");
+		});
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package contactService;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
@@ -133,7 +134,7 @@ public class ContactApp {
 	 * @param contactService The service to list contacts from
 	 */
 	private static void handleListAll(ContactService contactService) {
-		ArrayList<Contact> contacts = contactService.listAll();
+		List<Contact> contacts = contactService.listAll();
 
 		if (contacts.isEmpty()) {
 			System.out.println("No contacts to display.");
