@@ -2,6 +2,7 @@ package contactService;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 
 /**
  * ContactService stores and manages Contacts. Each contact must have a unique ID
@@ -16,6 +17,13 @@ public class ContactService {
 	private ArrayList<Contact> contacts;
 
 	/**
+	 * HashMap keyed by contact ID, giving O(1) lookups for getContact, update, and delete
+	 * instead of a linear scan. Holds references to the same Contact objects as contacts,
+	 * not copies, so mutating a Contact through one structure is visible through the other.
+	 */
+	private HashMap<String, Contact> contactsById;
+
+	/**
 	 * Counter used by generateNextId() to assign IDs to contacts added without one
 	 */
 	private int nextId;
@@ -25,29 +33,8 @@ public class ContactService {
 	 */
 	public ContactService() {
 		this.contacts = new ArrayList<Contact>();
+		this.contactsById = new HashMap<String, Contact>();
 		this.nextId = 1;
-	}
-
-	/**
-	 * Gets the index of the contact in the contacts ArrayList. It will return -1 if the Contact is not found
-	 *
-	 * @param id The unique ID of the contact to search for
-	 * @return The index of the contact if it is found or -1 if it is not found
-	 */
-	private int getContactIndex(String id) {
-		// Set index to -1
-		int index = -1;
-
-		// Loop through the list and compare the id of the contact to the id we are looking for
-		// If the id is found, set index equal to i and break from the loop
-		for (int i = 0; i < this.contacts.size(); i++) {
-			if (this.contacts.get(i).getId().equals(id)) {
-				index = i;
-				break;
-			}
-		}
-
-		return index;
 	}
 
 	/**
@@ -55,15 +42,13 @@ public class ContactService {
 	 * @param newContact The Contact to add to the list. Its ID must be unique
 	 */
 	public void addContact(Contact newContact) {
-		// Search for the Contact in the list. If -1 is not returned we know the ID is not unique
-		int index = this.getContactIndex(newContact.getId());
-
-		// Throw an IllegalArgumentException if the ID is not unique
-		if(index != -1) {
+		// If the id is already a key, it's not unique
+		if (this.contactsById.containsKey(newContact.getId())) {
 			throw new IllegalArgumentException("ID is not unique");
 		}
 
 		this.contacts.add(newContact);
+		this.contactsById.put(newContact.getId(), newContact);
 	}
 
 	/**
@@ -97,15 +82,11 @@ public class ContactService {
 	 * @param contactId The ID of the Contact to delete
 	 */
 	public void deleteContact(String contactId) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
+		// getContact throws IllegalArgumentException if the contact does not exist
+		Contact contact = this.getContact(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
-			throw new IllegalArgumentException("Contact does not exist");
-		}
-
-		this.contacts.remove(index);
+		this.contacts.remove(contact);
+		this.contactsById.remove(contactId);
 	}
 
 	/**
@@ -115,15 +96,7 @@ public class ContactService {
 	 * @param firstName Contact's new first name. Cannot be null or more than 10 characters
 	 */
 	public void updateFirstName(String contactId, String firstName) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
-
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
-			throw new IllegalArgumentException("Contact does not exist");
-		}
-
-		this.contacts.get(index).setFirstName(firstName);
+		this.getContact(contactId).setFirstName(firstName);
 	}
 
 	/**
@@ -133,15 +106,7 @@ public class ContactService {
 	 * @param lastName Contact's new last name. Cannot be null or more than 10 characters
 	 */
 	public void updateLastName(String contactId, String lastName) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
-
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
-			throw new IllegalArgumentException("Contact does not exist");
-		}
-
-		this.contacts.get(index).setLastName(lastName);
+		this.getContact(contactId).setLastName(lastName);
 	}
 
 	/**
@@ -151,15 +116,7 @@ public class ContactService {
 	 * @param phoneNumber Contact's new phone number. Cannot be null, must be exactly 10 characters, and can only contain the digits 0-9
 	 */
 	public void updatePhoneNumber(String contactId, String phoneNumber) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
-
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
-			throw new IllegalArgumentException("Contact does not exist");
-		}
-
-		this.contacts.get(index).setPhoneNumber(phoneNumber);
+		this.getContact(contactId).setPhoneNumber(phoneNumber);
 	}
 
 	/**
@@ -169,15 +126,7 @@ public class ContactService {
 	 * @param address Contact's new address. Cannot be null or more than 30 characters
 	 */
 	public void updateAddress(String contactId, String address) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
-
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
-			throw new IllegalArgumentException("Contact does not exist");
-		}
-
-		this.contacts.get(index).setAddress(address);
+		this.getContact(contactId).setAddress(address);
 	}
 
 	/**
@@ -187,15 +136,14 @@ public class ContactService {
 	 * @return The Contact
 	 */
 	public Contact getContact(String contactId) {
-		// Get the index of the Contact
-		int index = this.getContactIndex(contactId);
+		Contact contact = this.contactsById.get(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
-		if (index == -1) {
+		// A null return from the map means the id isn't a key, so the contact does not exist
+		if (contact == null) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
 
-		return this.contacts.get(index);
+		return contact;
 	}
 
 	/**
