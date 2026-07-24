@@ -257,19 +257,19 @@ class ContactServiceTest {
 	}
 
 	@Test
-	@DisplayName("Test that searchByName finds a contact by full name, case-insensitively")
+	@DisplayName("Test that searchByName finds a contact by last name, case-insensitively")
 	void testSearchByNameFindsContact() {
 		Contact contact = new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
 		service.addContact(contact);
 
-		ArrayList<Contact> matches = service.searchByName("john smith");
+		ArrayList<Contact> matches = service.searchByName("smith");
 
 		Assertions.assertEquals(1, matches.size());
 		Assertions.assertEquals(contact, matches.get(0));
 	}
 
 	@Test
-	@DisplayName("Test that searchByName excludes contacts that don't match the query")
+	@DisplayName("Test that searchByName excludes contacts whose last name doesn't match")
 	void testSearchByNameExcludesNonMatches() {
 		Contact match = new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
 		Contact nonMatch = new Contact("0002", "Jane", "Doe", "4171234567", "123 Lauren Ln, Naylor MO");
@@ -277,40 +277,41 @@ class ContactServiceTest {
 		service.addContact(match);
 		service.addContact(nonMatch);
 
-		ArrayList<Contact> matches = service.searchByName("John Smith");
+		ArrayList<Contact> matches = service.searchByName("Smith");
 
 		Assertions.assertEquals(1, matches.size());
 		Assertions.assertTrue(matches.contains(match));
 	}
 
 	@Test
-	@DisplayName("Test that searchByName matches on a partial name")
-	void testSearchByNamePartialMatch() {
+	@DisplayName("Test that searchByName matches a last-name prefix, including a longer name that starts with it")
+	void testSearchByNamePrefixMatch() {
 		Contact contact1 = new Contact("0001", "Dalton", "Young", "5731234567", "11 Broadway St, Springfield MO");
-		Contact contact2 = new Contact("0002", "Dalton", "Smith", "4171234567", "123 Lauren Ln, Naylor MO");
-		Contact nonMatch = new Contact("0003", "Jane", "Doe", "3141234567", "1 Main St, Anytown MO");
+		Contact contact2 = new Contact("0002", "John", "Young", "4171234567", "123 Lauren Ln, Naylor MO");
+		Contact contact3 = new Contact("0003", "Bob", "Youngerest", "3141234567", "1 Main St, Anytown MO");
 
 		service.addContact(contact1);
 		service.addContact(contact2);
-		service.addContact(nonMatch);
+		service.addContact(contact3);
 
-		ArrayList<Contact> matches = service.searchByName("Dalton");
+		ArrayList<Contact> matches = service.searchByName("Young");
 
-		Assertions.assertEquals(2, matches.size());
+		Assertions.assertEquals(3, matches.size());
 		Assertions.assertTrue(matches.contains(contact1));
 		Assertions.assertTrue(matches.contains(contact2));
+		Assertions.assertTrue(matches.contains(contact3));
 	}
 
 	@Test
-	@DisplayName("Test that searchByName returns every contact sharing the same full name")
+	@DisplayName("Test that searchByName returns every contact sharing the same last name")
 	void testSearchByNameFindsMultipleMatches() {
 		Contact contact1 = new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
-		Contact contact2 = new Contact("0002", "John", "Smith", "4171234567", "123 Lauren Ln, Naylor MO");
+		Contact contact2 = new Contact("0002", "Jane", "Smith", "4171234567", "123 Lauren Ln, Naylor MO");
 
 		service.addContact(contact1);
 		service.addContact(contact2);
 
-		ArrayList<Contact> matches = service.searchByName("John Smith");
+		ArrayList<Contact> matches = service.searchByName("Smith");
 
 		Assertions.assertEquals(2, matches.size());
 		Assertions.assertTrue(matches.contains(contact1));
@@ -318,11 +319,63 @@ class ContactServiceTest {
 	}
 
 	@Test
-	@DisplayName("Test that searchByName returns an empty list when nothing matches")
+	@DisplayName("Test that searchByName returns an empty list when no last name matches, among other contacts")
 	void testSearchByNameNotFound() {
-		ArrayList<Contact> matches = service.searchByName("Nobody Special");
+		Contact contact = new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
+		service.addContact(contact);
+
+		ArrayList<Contact> matches = service.searchByName("Nobody");
 
 		Assertions.assertTrue(matches.isEmpty());
+	}
+
+	@Test
+	@DisplayName("Test that a renamed contact is findable under its new last name and not its old one")
+	void testSearchByNameFindsContactAfterRename() {
+		Contact contact = new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
+		service.addContact(contact);
+
+		service.updateLastName("0001", "Johnson");
+
+		ArrayList<Contact> matches = service.searchByName("Johnson");
+		Assertions.assertEquals(1, matches.size());
+		Assertions.assertEquals(contact, matches.get(0));
+
+		ArrayList<Contact> oldNameMatches = service.searchByName("Smith");
+		Assertions.assertTrue(oldNameMatches.isEmpty());
+	}
+
+	@Test
+	@DisplayName("Test that searchByName returns an empty list when given a null prefix")
+	void testSearchByNameNullPrefix() {
+		ArrayList<Contact> matches = service.searchByName(null);
+
+		Assertions.assertTrue(matches.isEmpty());
+	}
+
+	@Test
+	@DisplayName("Test that searchByName returns an empty list when the prefix is longer than any valid last name")
+	void testSearchByNamePrefixTooLong() {
+		ArrayList<Contact> matches = service.searchByName("ThisIsWayTooLong");
+
+		Assertions.assertTrue(matches.isEmpty());
+	}
+
+	@Test
+	@DisplayName("Test that searchByName's forward expansion stops at a non-matching contact, not just the end of the list")
+	void testSearchByNameStopsExpandingAtNonMatchWithMoreContactsAfter() {
+		Contact before = new Contact("0001", "John", "Adams", "5731234567", "11 Broadway St, Springfield MO");
+		Contact match = new Contact("0002", "Dalton", "Young", "4171234567", "123 Lauren Ln, Naylor MO");
+		Contact after = new Contact("0003", "Bob", "Zabriskie", "3141234567", "1 Main St, Anytown MO");
+
+		service.addContact(before);
+		service.addContact(match);
+		service.addContact(after);
+
+		ArrayList<Contact> matches = service.searchByName("Young");
+
+		Assertions.assertEquals(1, matches.size());
+		Assertions.assertTrue(matches.contains(match));
 	}
 
 }

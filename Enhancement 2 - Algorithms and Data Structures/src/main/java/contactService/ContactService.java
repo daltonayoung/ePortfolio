@@ -14,20 +14,16 @@ import java.util.List;
  */
 public class ContactService {
 	/**
-	 * ArrayList to store the Contacts. Still needed by searchByName's linear scan for now
-	 */
-	private ArrayList<Contact> contacts;
-
-	/**
 	 * HashMap keyed by contact ID, giving O(1) lookups for getContact, update, and delete
-	 * instead of a linear scan. Holds references to the same Contact objects as contacts,
-	 * not copies, so mutating a Contact through one structure is visible through the other.
+	 * instead of a linear scan. Holds references to the same Contact objects as
+	 * contactsByName, not copies, so mutating a Contact through one structure is visible
+	 * through the other.
 	 */
 	private HashMap<String, Contact> contactsById;
 
 	/**
 	 * ArrayList kept sorted by last name, then first name, at all times. Same Contact
-	 * references as contacts and contactsById, not copies. Maintained incrementally through
+	 * references as contactsById, not copies. Maintained incrementally through
 	 * insertIntoSorted/removeFromSorted so listAll doesn't need to sort on every call.
 	 */
 	private ArrayList<Contact> contactsByName;
@@ -36,7 +32,8 @@ public class ContactService {
 	 * Comparator used to keep contactsByName sorted and to binary search it
 	 */
 	private static final Comparator<Contact> nameComparator =
-		Comparator.comparing(Contact::getLastName).thenComparing(Contact::getFirstName);
+		Comparator.comparing((Contact contact) -> contact.getLastName().toLowerCase())
+			.thenComparing(contact -> contact.getFirstName().toLowerCase());
 
 	/**
 	 * Counter used by generateNextId() to assign IDs to contacts added without one
@@ -47,7 +44,6 @@ public class ContactService {
 	 * Initialize a new instance
 	 */
 	public ContactService() {
-		this.contacts = new ArrayList<Contact>();
 		this.contactsById = new HashMap<String, Contact>();
 		this.contactsByName = new ArrayList<Contact>();
 		this.nextId = 1;
@@ -103,7 +99,6 @@ public class ContactService {
 			throw new IllegalArgumentException("ID is not unique");
 		}
 
-		this.contacts.add(newContact);
 		this.contactsById.put(newContact.getId(), newContact);
 		this.insertIntoSorted(newContact);
 	}
@@ -142,7 +137,6 @@ public class ContactService {
 		// getContact throws IllegalArgumentException if the contact does not exist
 		Contact contact = this.getContact(contactId);
 
-		this.contacts.remove(contact);
 		this.contactsById.remove(contactId);
 		this.removeFromSorted(contact);
 	}
@@ -237,24 +231,62 @@ public class ContactService {
 	}
 
 	/**
-	 * Finds every contact whose full name (first name and last name combined) contains
-	 * the given text. Matching is case-insensitive and by substring, so a partial name,
-	 * just a first name or just a last name, still finds matches.
+	 * Finds every contact whose last name starts with the given prefix, case-insensitively,
+	 * using binary search against contactsByName instead of a linear scan. A prefix match
+	 * works because everything sharing a prefix sorts contiguously in a list sorted by last 
+	 * name, so binary search can land inside that block, then a walk outward collects every 
+	 * match. No last name can exceed Contact.MAX_NAME_LENGTH, so a longer prefix can never match
+	 * anything and is rejected immediately without searching.
 	 *
-	 * @param name Text to search for within each contact's full name
-	 * @return All contacts whose full name contains that text, or an empty list if none match
+	 * @param lastNamePrefix The last name, or the start of it, to search for
+	 * @return All contacts whose last name starts with that prefix, or an empty list if none match
 	 */
-	public ArrayList<Contact> searchByName(String name) {
+	public ArrayList<Contact> searchByName(String lastNamePrefix) {
 		ArrayList<Contact> matches = new ArrayList<Contact>();
 
-		// Linear scan checking each contact's combined first and last name for the query, case-insensitively
-		for (int i = 0; i < this.contacts.size(); i++) {
-			Contact contact = this.contacts.get(i);
-			String fullName = contact.getFirstName() + " " + contact.getLastName();
+		if (lastNamePrefix == null || lastNamePrefix.length() > Contact.MAX_NAME_LENGTH) {
+			return matches;
+		}
 
-			if (fullName.toLowerCase().contains(name.toLowerCase())) {
-				matches.add(contact);
+		String prefix = lastNamePrefix.toLowerCase();
+
+		// A placeholder Contact used purely to carry the prefix into the comparator below,
+		// never actually stored anywhere
+		Contact key = new Contact("0", "-", lastNamePrefix, "0000000000", "-");
+
+		// Treats a contact as "equal" to the key if its last name starts with the prefix,
+		// case-insensitively, otherwise orders by the same case-insensitive rule as
+		// nameComparator, so binarySearch stays consistent with how the list is actually sorted
+		Comparator<Contact> prefixComparator = (contact, k) -> {
+			String contactLastName = contact.getLastName().toLowerCase();
+
+			if (contactLastName.startsWith(prefix)) {
+				return 0;
 			}
+
+			return contactLastName.compareTo(k.getLastName().toLowerCase());
+		};
+
+		int anchor = Collections.binarySearch(this.contactsByName, key, prefixComparator);
+
+		if (anchor < 0) {
+			return matches;
+		}
+
+		// binarySearch only guarantees landing somewhere inside the matching block, so walk
+		// back to its start, then collect forward until the prefix no longer matches
+		int start = anchor;
+		while (start > 0 && this.contactsByName.get(start - 1).getLastName().toLowerCase().startsWith(prefix)) {
+			start--;
+		}
+
+		int end = anchor;
+		while (end < this.contactsByName.size() - 1 && this.contactsByName.get(end + 1).getLastName().toLowerCase().startsWith(prefix)) {
+			end++;
+		}
+
+		for (int i = start; i <= end; i++) {
+			matches.add(this.contactsByName.get(i));
 		}
 
 		return matches;

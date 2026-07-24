@@ -147,14 +147,15 @@ public class ContactApp {
 	}
 
 	/**
-	 * Prompts for a full name and displays every contact that matches it. More than one
-	 * contact can share a full name, so every match is shown rather than just the first.
+	 * Prompts for a last name, or the start of one, and displays every contact whose last
+	 * name matches. More than one contact can share or start with the same last name, so
+	 * every match is shown rather than just the first.
 	 *
 	 * @param scanner Used to read user input
 	 * @param contactService The service to search
 	 */
 	private static void handleSearchByName(Scanner scanner, ContactService contactService) {
-		System.out.print("Name to search for: ");
+		System.out.print("Last name (or the start of it) to search for: ");
 		String name = scanner.nextLine();
 
 		ArrayList<Contact> matches = contactService.searchByName(name);
