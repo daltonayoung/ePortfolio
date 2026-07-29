@@ -2,6 +2,7 @@ package contactService;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -13,12 +14,14 @@ import java.util.List;
 
 /**
  * ContactService stores and manages Contacts, persisting them to a SQLite database. Each
- * contact must have a unique ID
+ * contact must have a unique ID. Implements AutoCloseable so the underlying database
+ * connection can be released, such as with try-with-resources, when a caller is done with
+ * an instance, for example a file-backed one used in a test
  *
  * @author Dalton Young <dalton.young@snhu.edu>
  *
  */
-public class ContactService {
+public class ContactService implements AutoCloseable {
 	/**
 	 * HashMap keyed by contact ID, giving O(1) lookups for getContact, update, and delete
 	 * instead of a linear scan. Holds references to the same Contact objects as
@@ -93,6 +96,22 @@ public class ContactService {
 			this.loadContactsFromDatabase();
 		} catch (SQLException e) {
 			throw new ContactPersistenceException("Failed to initialize the contacts database", e);
+		}
+	}
+
+	/**
+	 * Closes the underlying database connection. Safe, and expected, to call once a caller
+	 * is done with this instance, for example at the end of a test using a file-backed
+	 * database, so the file isn't left locked by an open connection
+	 *
+	 * @throws ContactPersistenceException If closing the connection fails
+	 */
+	@Override
+	public void close() {
+		try {
+			this.connection.close();
+		} catch (SQLException e) {
+			throw new ContactPersistenceException("Failed to close the database connection", e);
 		}
 	}
 
@@ -183,7 +202,10 @@ public class ContactService {
 	}
 
 	/**
-	 * Adds a contact to the list.
+	 * Adds a contact to the list. Writes to the database before touching either in-memory
+	 * structure, so a failed write never leaves the cache holding a contact the database
+	 * doesn't actually have
+	 *
 	 * @param newContact The Contact to add to the list. Its ID must be unique
 	 */
 	public void addContact(Contact newContact) {
@@ -192,8 +214,33 @@ public class ContactService {
 			throw new IllegalArgumentException("ID is not unique");
 		}
 
+		this.insertContactIntoDatabase(newContact);
+
 		this.contactsById.put(newContact.getId(), newContact);
 		this.insertIntoSorted(newContact);
+	}
+
+	/**
+	 * Inserts a contact into the contacts table using a parameterized statement, binding
+	 * every field as data so nothing entered by a user is ever concatenated into the SQL
+	 * itself
+	 *
+	 * @param contact The contact to insert
+	 * @throws ContactPersistenceException If the insert fails
+	 */
+	private void insertContactIntoDatabase(Contact contact) {
+		String sql = "INSERT INTO contacts (id, first_name, last_name, phone_number, address) VALUES (?, ?, ?, ?, ?)";
+
+		try (PreparedStatement statement = this.connection.prepareStatement(sql)) {
+			statement.setString(1, contact.getId());
+			statement.setString(2, contact.getFirstName());
+			statement.setString(3, contact.getLastName());
+			statement.setString(4, contact.getPhoneNumber());
+			statement.setString(5, contact.getAddress());
+			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new ContactPersistenceException("Failed to add contact to the database", e);
+		}
 	}
 
 	/**
@@ -222,7 +269,9 @@ public class ContactService {
 	}
 
 	/**
-	 * Deletes a Contact from the list
+	 * Deletes a Contact from the list. Writes to the database before touching either
+	 * in-memory structure, so a failed delete never leaves the cache without a contact the
+	 * database still has
 	 *
 	 * @param contactId The ID of the Contact to delete
 	 */
@@ -230,18 +279,41 @@ public class ContactService {
 		// getContact throws IllegalArgumentException if the contact does not exist
 		Contact contact = this.getContact(contactId);
 
+		this.deleteContactFromDatabase(contactId);
+
 		this.contactsById.remove(contactId);
 		this.removeFromSorted(contact);
 	}
 
 	/**
-	 * Updates a Contact's first name given its unique ID
+	 * Deletes a contact from the contacts table using a parameterized statement
+	 *
+	 * @param contactId The ID of the contact to delete
+	 * @throws ContactPersistenceException If the delete fails
+	 */
+	private void deleteContactFromDatabase(String contactId) {
+		String sql = "DELETE FROM contacts WHERE id = ?";
+
+		try (PreparedStatement statement = this.connection.prepareStatement(sql)) {
+			statement.setString(1, contactId);
+			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new ContactPersistenceException("Failed to delete contact from the database", e);
+		}
+	}
+
+	/**
+	 * Updates a Contact's first name given its unique ID. The database write happens after
+	 * the in-memory setter, since the setter is what actually validates the new value, but
+	 * if that write fails the name is rolled back to what it was, so the cache never ends up
+	 * holding a name the database doesn't have
 	 *
 	 * @param contactId The unique ID of the Contact
 	 * @param firstName Contact's new first name. Cannot be null or more than 10 characters
 	 */
 	public void updateFirstName(String contactId, String firstName) {
 		Contact contact = this.getContact(contactId);
+		String previousFirstName = contact.getFirstName();
 
 		// Removed using the old name before mutating, since removeFromSorted needs the old
 		// sort key to find it. The finally block guarantees it's always reinserted, either
@@ -250,23 +322,39 @@ public class ContactService {
 		this.removeFromSorted(contact);
 		try {
 			contact.setFirstName(firstName);
+			try {
+				this.updateContactInDatabase(contact);
+			} catch (ContactPersistenceException e) {
+				contact.setFirstName(previousFirstName);
+				throw e;
+			}
 		} finally {
 			this.insertIntoSorted(contact);
 		}
 	}
 
 	/**
-	 * Updates a Contact's last name given its unique ID
+	 * Updates a Contact's last name given its unique ID. The database write happens after
+	 * the in-memory setter, since the setter is what actually validates the new value, but
+	 * if that write fails the name is rolled back to what it was, so the cache never ends up
+	 * holding a name the database doesn't have
 	 *
 	 * @param contactId The unique ID of the Contact
 	 * @param lastName Contact's new last name. Cannot be null or more than 10 characters
 	 */
 	public void updateLastName(String contactId, String lastName) {
 		Contact contact = this.getContact(contactId);
+		String previousLastName = contact.getLastName();
 
 		this.removeFromSorted(contact);
 		try {
 			contact.setLastName(lastName);
+			try {
+				this.updateContactInDatabase(contact);
+			} catch (ContactPersistenceException e) {
+				contact.setLastName(previousLastName);
+				throw e;
+			}
 		} finally {
 			this.insertIntoSorted(contact);
 		}
@@ -274,24 +362,67 @@ public class ContactService {
 
 	/**
 	 * Updates a Contact's phone number given its unique ID. Doesn't touch contactsByName,
-	 * phone number isn't part of the sort key
+	 * phone number isn't part of the sort key. If the database write fails, the phone number
+	 * is rolled back to what it was
 	 *
 	 * @param contactId The unique ID of the Contact
 	 * @param phoneNumber Contact's new phone number. Cannot be null, must be exactly 10 characters, and can only contain the digits 0-9
 	 */
 	public void updatePhoneNumber(String contactId, String phoneNumber) {
-		this.getContact(contactId).setPhoneNumber(phoneNumber);
+		Contact contact = this.getContact(contactId);
+		String previousPhoneNumber = contact.getPhoneNumber();
+
+		contact.setPhoneNumber(phoneNumber);
+		try {
+			this.updateContactInDatabase(contact);
+		} catch (ContactPersistenceException e) {
+			contact.setPhoneNumber(previousPhoneNumber);
+			throw e;
+		}
 	}
 
 	/**
-	 * Updates a Contact's address given its unique ID. Doesn't touch contactsByName,
-	 * address isn't part of the sort key
+	 * Updates a Contact's address given its unique ID. Doesn't touch contactsByName, address
+	 * isn't part of the sort key. If the database write fails, the address is rolled back to
+	 * what it was
 	 *
 	 * @param contactId The unique ID of the Contact
 	 * @param address Contact's new address. Cannot be null or more than 30 characters
 	 */
 	public void updateAddress(String contactId, String address) {
-		this.getContact(contactId).setAddress(address);
+		Contact contact = this.getContact(contactId);
+		String previousAddress = contact.getAddress();
+
+		contact.setAddress(address);
+		try {
+			this.updateContactInDatabase(contact);
+		} catch (ContactPersistenceException e) {
+			contact.setAddress(previousAddress);
+			throw e;
+		}
+	}
+
+	/**
+	 * Writes every field of a contact to its existing row in the contacts table using a
+	 * parameterized statement, keyed by id. Shared by all four update methods instead of
+	 * each one running its own single-column update
+	 *
+	 * @param contact The contact whose row should be updated
+	 * @throws ContactPersistenceException If the update fails
+	 */
+	private void updateContactInDatabase(Contact contact) {
+		String sql = "UPDATE contacts SET first_name = ?, last_name = ?, phone_number = ?, address = ? WHERE id = ?";
+
+		try (PreparedStatement statement = this.connection.prepareStatement(sql)) {
+			statement.setString(1, contact.getFirstName());
+			statement.setString(2, contact.getLastName());
+			statement.setString(3, contact.getPhoneNumber());
+			statement.setString(4, contact.getAddress());
+			statement.setString(5, contact.getId());
+			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new ContactPersistenceException("Failed to update contact in the database", e);
+		}
 	}
 
 	/**

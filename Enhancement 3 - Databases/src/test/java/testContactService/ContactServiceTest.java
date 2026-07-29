@@ -6,11 +6,14 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import contactService.Contact;
+import contactService.ContactPersistenceException;
 import contactService.ContactService;
 
 class ContactServiceTest {
@@ -376,6 +379,159 @@ class ContactServiceTest {
 
 		Assertions.assertEquals(1, matches.size());
 		Assertions.assertTrue(matches.contains(match));
+	}
+
+	@TempDir
+	Path tempDir;
+
+	@Test
+	@DisplayName("Test that a contact added through one ContactService instance is visible to a second instance opened against the same database file")
+	void testAddContactPersistsToDatabase() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			Assertions.assertEquals("John", secondService.getContact("0001").getFirstName());
+		}
+	}
+
+	@Test
+	@DisplayName("Test that deleting a contact through one ContactService instance removes it from the database, not just the cache")
+	void testDeleteContactPersistsToDatabase() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+			firstService.deleteContact("0001");
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			Assertions.assertThrows(IllegalArgumentException.class, () -> {
+				secondService.getContact("0001");
+			});
+		}
+	}
+
+	@Test
+	@DisplayName("Test that updating a contact's fields through one ContactService instance persists to the database, not just the cache")
+	void testUpdateContactPersistsToDatabase() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+
+			firstService.updateFirstName("0001", "Brad");
+			firstService.updateLastName("0001", "Jones");
+			firstService.updatePhoneNumber("0001", "4171234567");
+			firstService.updateAddress("0001", "103 Main St, Poplar Bluff MO");
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			Contact contact = secondService.getContact("0001");
+
+			Assertions.assertEquals("Brad", contact.getFirstName());
+			Assertions.assertEquals("Jones", contact.getLastName());
+			Assertions.assertEquals("4171234567", contact.getPhoneNumber());
+			Assertions.assertEquals("103 Main St, Poplar Bluff MO", contact.getAddress());
+		}
+	}
+
+	@Test
+	@DisplayName("Test that addContact throws ContactPersistenceException when the database connection is closed, and never adds the contact to the cache")
+	void testAddContactThrowsWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		});
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			contactService.getContact("0001");
+		});
+	}
+
+	@Test
+	@DisplayName("Test that deleteContact throws ContactPersistenceException when the database connection is closed, and never removes the contact from the cache")
+	void testDeleteContactThrowsWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.deleteContact("0001");
+		});
+		Assertions.assertEquals("John", contactService.getContact("0001").getFirstName());
+	}
+
+	@Test
+	@DisplayName("Test that updateFirstName rolls back to the previous first name when the database connection is closed")
+	void testUpdateFirstNameRollsBackWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.updateFirstName("0001", "Brad");
+		});
+		Assertions.assertEquals("John", contactService.getContact("0001").getFirstName());
+	}
+
+	@Test
+	@DisplayName("Test that updateLastName rolls back to the previous last name when the database connection is closed")
+	void testUpdateLastNameRollsBackWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.updateLastName("0001", "Jones");
+		});
+		Assertions.assertEquals("Smith", contactService.getContact("0001").getLastName());
+	}
+
+	@Test
+	@DisplayName("Test that updatePhoneNumber rolls back to the previous phone number when the database connection is closed")
+	void testUpdatePhoneNumberRollsBackWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.updatePhoneNumber("0001", "4171234567");
+		});
+		Assertions.assertEquals("5731234567", contactService.getContact("0001").getPhoneNumber());
+	}
+
+	@Test
+	@DisplayName("Test that updateAddress rolls back to the previous address when the database connection is closed")
+	void testUpdateAddressRollsBackWhenConnectionClosed() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+		ContactService contactService = new ContactService(databaseFilePath);
+		contactService.addContact(new Contact("0001", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+		contactService.close();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			contactService.updateAddress("0001", "103 Main St, Poplar Bluff MO");
+		});
+		Assertions.assertEquals("11 Broadway St, Springfield MO", contactService.getContact("0001").getAddress());
+	}
+
+	@Test
+	@DisplayName("Test that constructing a ContactService throws ContactPersistenceException when the database file's parent directory doesn't exist")
+	void testConstructorThrowsWhenParentDirectoryDoesNotExist() {
+		String databaseFilePath = tempDir.resolve("missing-directory").resolve("contacts.db").toString();
+
+		Assertions.assertThrows(ContactPersistenceException.class, () -> {
+			new ContactService(databaseFilePath);
+		});
 	}
 
 }
