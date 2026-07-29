@@ -94,6 +94,7 @@ public class ContactService implements AutoCloseable {
 			this.connection = DriverManager.getConnection(jdbcUrl);
 			this.createContactsTableIfNotExists();
 			this.loadContactsFromDatabase();
+			this.resumeIdCounterFromDatabase();
 		} catch (SQLException e) {
 			throw new ContactPersistenceException("Failed to initialize the contacts database", e);
 		}
@@ -159,6 +160,39 @@ public class ContactService implements AutoCloseable {
 				this.insertIntoSorted(contact);
 			}
 		}
+	}
+
+	/**
+	 * Sets nextId to one more than the highest existing numeric id in the contacts table, so
+	 * generateNextId() continues where a previous instance left off instead of colliding with
+	 * ids that already exist after a restart. Starts at 1 if the table is empty. 
+	 * addContact(Contact) accepts any caller-supplied id string, not just the numeric ones 
+	 * generateNextId() produces, so an id that isn't purely numeric is skipped rather than 
+	 * treated as an error
+	 *
+	 * @throws SQLException If reading the ids fails
+	 */
+	private void resumeIdCounterFromDatabase() throws SQLException {
+		String sql = "SELECT id FROM contacts";
+		int highestNumericId = 0;
+
+		try (Statement statement = this.connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			while (resultSet.next()) {
+				try {
+					int numericId = Integer.parseInt(resultSet.getString("id"));
+
+					if (numericId > highestNumericId) {
+						highestNumericId = numericId;
+					}
+				} catch (NumberFormatException e) {
+					// Not every id has to be numeric, so one that isn't just doesn't
+					// participate in resuming the counter
+				}
+			}
+		}
+
+		this.nextId = highestNumericId + 1;
 	}
 
 	/**

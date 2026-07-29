@@ -22,40 +22,39 @@ public class ContactApp {
 	 * @param args Not used
 	 */
 	public static void main(String[] args) {
-		Scanner scanner = new Scanner(System.in);
-		ContactService contactService = new ContactService();
-		boolean running = true;
+		try (Scanner scanner = new Scanner(System.in);
+				ContactService contactService = new ContactService("contacts.db")) {
+			boolean running = true;
 
-		while (running) {
-			displayMenu();
-			String choice = scanner.nextLine().trim();
-			System.out.println();
+			while (running) {
+				displayMenu();
+				String choice = scanner.nextLine().trim();
+				System.out.println();
 
-			switch (choice) {
-				case "1":
-					handleAdd(scanner, contactService);
-					break;
-				case "2":
-					handleListAll(contactService);
-					break;
-				case "3":
-					handleSearchByName(scanner, contactService);
-					break;
-				case "4":
-					handleUpdate(scanner, contactService);
-					break;
-				case "5":
-					handleDelete(scanner, contactService);
-					break;
-				case "6":
-					running = false;
-					break;
-				default:
-					System.out.println("Invalid choice.");
+				switch (choice) {
+					case "1":
+						handleAdd(scanner, contactService);
+						break;
+					case "2":
+						handleListAll(contactService);
+						break;
+					case "3":
+						handleSearchByName(scanner, contactService);
+						break;
+					case "4":
+						handleUpdate(scanner, contactService);
+						break;
+					case "5":
+						handleDelete(scanner, contactService);
+						break;
+					case "6":
+						running = false;
+						break;
+					default:
+						System.out.println("Invalid choice.");
+				}
 			}
 		}
-
-		scanner.close();
 	}
 
 	/**

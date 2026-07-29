@@ -534,4 +534,59 @@ class ContactServiceTest {
 		});
 	}
 
+	@Test
+	@DisplayName("Test that the id counter resumes from the highest existing id after reopening the database")
+	void testIdCounterResumesAfterRestart() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact("John", "Smith", "5731234567", "11 Broadway St, Springfield MO");
+			firstService.addContact("Cheyenne", "Miller", "5731234567", "123 Lauren Ln, Naylor MO");
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			secondService.addContact("Bob", "Jones", "3141234567", "1 Main St, Anytown MO");
+
+			Assertions.assertEquals("Bob", secondService.getContact("3").getFirstName());
+		}
+	}
+
+	@Test
+	@DisplayName("Test that the id counter resume finds the highest id even when the database returns it in a different order numerically")
+	void testIdCounterResumeFindsHighestIdRegardlessOfScanOrder() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		// id is a TEXT PRIMARY KEY, and a query selecting only id can be answered directly
+		// from that index, in string order rather than insertion order. "10" sorts before
+		// "2" as a string, even though it's numerically larger, which is exactly the
+		// mismatch needed to force a row that's numerically smaller than the running max
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact(new Contact("2", "Dalton", "Young", "5731234567", "11 Broadway St, Springfield MO"));
+			firstService.addContact(new Contact("10", "John", "Smith", "5731234567", "123 Lauren Ln, Naylor MO"));
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			secondService.addContact("Bob", "Jones", "3141234567", "1 Main St, Anytown MO");
+
+			Assertions.assertEquals("Bob", secondService.getContact("11").getFirstName());
+		}
+	}
+
+	@Test
+	@DisplayName("Test that the id counter resume tolerates a non-numeric id already in the database")
+	void testIdCounterResumeToleratesNonNumericId() {
+		String databaseFilePath = tempDir.resolve("contacts.db").toString();
+
+		try (ContactService firstService = new ContactService(databaseFilePath)) {
+			firstService.addContact(new Contact("custom-id", "John", "Smith", "5731234567", "11 Broadway St, Springfield MO"));
+			firstService.addContact("Cheyenne", "Miller", "5731234567", "123 Lauren Ln, Naylor MO");
+		}
+
+		try (ContactService secondService = new ContactService(databaseFilePath)) {
+			secondService.addContact("Bob", "Jones", "3141234567", "1 Main St, Anytown MO");
+
+			Assertions.assertEquals("Bob", secondService.getContact("2").getFirstName());
+		}
+	}
+
 }
