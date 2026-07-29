@@ -1,5 +1,10 @@
 package contactService;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -7,7 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 
 /**
- * ContactService stores and manages Contacts. Each contact must have a unique ID
+ * ContactService stores and manages Contacts, persisting them to a SQLite database. Each
+ * contact must have a unique ID
  *
  * @author Dalton Young <dalton.young@snhu.edu>
  *
@@ -41,12 +47,99 @@ public class ContactService {
 	private int nextId;
 
 	/**
-	 * Initialize a new instance
+	 * JDBC connection to the SQLite database backing this service, opened once during
+	 * construction and held for the lifetime of this instance
+	 */
+	private Connection connection;
+
+	/**
+	 * Initializes a new instance backed by a private, in-memory SQLite database that exists
+	 * only for the lifetime of this instance and is never written to disk. This is the
+	 * default so existing callers, including every test written before this enhancement,
+	 * stay isolated from each other and from any real database file
 	 */
 	public ContactService() {
+		this.initialize("jdbc:sqlite::memory:");
+	}
+
+	/**
+	 * Initializes a new instance backed by a SQLite database file at the given path,
+	 * creating the file and the contacts table if they don't already exist. Used for real
+	 * persistence, such as ContactApp's actual usage, or for opening two separate instances
+	 * against the same file to confirm data survives a restart
+	 *
+	 * @param databaseFilePath Path to the SQLite database file
+	 */
+	public ContactService(String databaseFilePath) {
+		this.initialize("jdbc:sqlite:" + databaseFilePath);
+	}
+
+	/**
+	 * Shared setup for both constructors: initializes the in-memory structures, opens the
+	 * database connection, creates the contacts table if it doesn't already exist, and loads
+	 * any existing rows into contactsById and contactsByName
+	 *
+	 * @param jdbcUrl The JDBC connection URL to open
+	 * @throws ContactPersistenceException If the connection, table creation, or initial load fails
+	 */
+	private void initialize(String jdbcUrl) {
 		this.contactsById = new HashMap<String, Contact>();
 		this.contactsByName = new ArrayList<Contact>();
 		this.nextId = 1;
+
+		try {
+			this.connection = DriverManager.getConnection(jdbcUrl);
+			this.createContactsTableIfNotExists();
+			this.loadContactsFromDatabase();
+		} catch (SQLException e) {
+			throw new ContactPersistenceException("Failed to initialize the contacts database", e);
+		}
+	}
+
+	/**
+	 * Creates the contacts table if it doesn't already exist, so both a fresh in-memory
+	 * database and a pre-existing file-backed database work the same way
+	 *
+	 * @throws SQLException If the table creation fails
+	 */
+	private void createContactsTableIfNotExists() throws SQLException {
+		String sql = "CREATE TABLE IF NOT EXISTS contacts ("
+			+ "id TEXT PRIMARY KEY, "
+			+ "first_name TEXT, "
+			+ "last_name TEXT, "
+			+ "phone_number TEXT, "
+			+ "address TEXT)";
+
+		try (Statement statement = this.connection.createStatement()) {
+			statement.execute(sql);
+		}
+	}
+
+	/**
+	 * Loads every existing row from the contacts table into contactsById and contactsByName,
+	 * so a file-backed database's contacts are available immediately on startup. Not
+	 * parameterized since it takes no input, the query is a fixed literal with nothing to
+	 * inject
+	 *
+	 * @throws SQLException If reading from the database fails
+	 */
+	private void loadContactsFromDatabase() throws SQLException {
+		String sql = "SELECT id, first_name, last_name, phone_number, address FROM contacts";
+
+		try (Statement statement = this.connection.createStatement();
+				ResultSet resultSet = statement.executeQuery(sql)) {
+			while (resultSet.next()) {
+				Contact contact = new Contact(
+					resultSet.getString("id"),
+					resultSet.getString("first_name"),
+					resultSet.getString("last_name"),
+					resultSet.getString("phone_number"),
+					resultSet.getString("address"));
+
+				this.contactsById.put(contact.getId(), contact);
+				this.insertIntoSorted(contact);
+			}
+		}
 	}
 
 	/**
