@@ -55,10 +55,8 @@ public class ContactService {
 	 * @param newContact The Contact to add to the list. Its ID must be unique
 	 */
 	public void addContact(Contact newContact) {
-		// Search for the Contact in the list. If -1 is not returned we know the ID is not unique
 		int index = this.getContactIndex(newContact.getId());
 
-		// Throw an IllegalArgumentException if the ID is not unique
 		if(index != -1) {
 			throw new IllegalArgumentException("ID is not unique");
 		}
@@ -97,10 +95,8 @@ public class ContactService {
 	 * @param contactId The ID of the Contact to delete
 	 */
 	public void deleteContact(String contactId) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
@@ -115,10 +111,8 @@ public class ContactService {
 	 * @param firstName Contact's new first name. Cannot be null or more than 10 characters
 	 */
 	public void updateFirstName(String contactId, String firstName) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
@@ -133,10 +127,8 @@ public class ContactService {
 	 * @param lastName Contact's new last name. Cannot be null or more than 10 characters
 	 */
 	public void updateLastName(String contactId, String lastName) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
@@ -151,10 +143,8 @@ public class ContactService {
 	 * @param phoneNumber Contact's new phone number. Cannot be null, must be exactly 10 characters, and can only contain the digits 0-9
 	 */
 	public void updatePhoneNumber(String contactId, String phoneNumber) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
@@ -169,10 +159,8 @@ public class ContactService {
 	 * @param address Contact's new address. Cannot be null or more than 30 characters
 	 */
 	public void updateAddress(String contactId, String address) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
@@ -187,10 +175,8 @@ public class ContactService {
 	 * @return The Contact
 	 */
 	public Contact getContact(String contactId) {
-		// Get the index of the Contact
 		int index = this.getContactIndex(contactId);
 
-		// If the index is -1 then the Contact is not in the list, so throw an IllegalArgumentException
 		if (index == -1) {
 			throw new IllegalArgumentException("Contact does not exist");
 		}
