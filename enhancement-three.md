@@ -6,7 +6,7 @@ permalink: /enhancement-three.html
 
 # Enhancement Three: Databases
 
-<a href="https://github.com/maxpayne777/ePortfolio/tree/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">View the code before this enhancement (Enhancement Two)</a> &nbsp;|&nbsp; <a href="https://github.com/maxpayne777/ePortfolio/tree/main/Enhancement%203%20-%20Databases" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
+<a href="https://github.com/daltonayoung/ePortfolio/tree/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">View the code before this enhancement (Enhancement Two)</a> &nbsp;|&nbsp; <a href="https://github.com/daltonayoung/ePortfolio/tree/main/Enhancement%203%20-%20Databases" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
 
 ## Describing the Artifact
 
@@ -32,7 +32,7 @@ The Module One plan mapped this enhancement to Outcomes 4 and 5. I met Outcome 5
 
 I met Outcome 4, well-founded and innovative tools and techniques, through the write-through cache design itself, and through wrapping SQLException in a purpose-built ContactPersistenceException instead of letting a checked exception force itself onto every existing caller. Wrapping the SQLException was not actually part of the plan, but something I discovered needed to be done during development.
 
-I kept building evidence toward Outcome 1 as well, through Javadoc on every new or changed method and commits staged the same way as the first two enhancements, each explaining why a change was made. The commits for Enhancement Three can be viewed <a href="https://github.com/maxpayne777/ePortfolio/commits/main/Enhancement%203%20-%20Databases" target="_blank" rel="noopener noreferrer">here</a>.
+I kept building evidence toward Outcome 1 as well, through Javadoc on every new or changed method and commits staged the same way as the first two enhancements, each explaining why a change was made. The commits for Enhancement Three can be viewed <a href="https://github.com/daltonayoung/ePortfolio/commits/main/Enhancement%203%20-%20Databases" target="_blank" rel="noopener noreferrer">here</a>.
 
 ## Reflecting on the Process
 

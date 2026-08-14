@@ -6,7 +6,7 @@ permalink: /enhancement-two.html
 
 # Enhancement Two: Algorithms & Data Structures
 
-<a href="https://github.com/maxpayne777/ePortfolio/tree/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">View the code before this enhancement (Enhancement One)</a> &nbsp;|&nbsp; <a href="https://github.com/maxpayne777/ePortfolio/tree/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
+<a href="https://github.com/daltonayoung/ePortfolio/tree/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">View the code before this enhancement (Enhancement One)</a> &nbsp;|&nbsp; <a href="https://github.com/daltonayoung/ePortfolio/tree/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
 
 ## Describing the Artifact
 
@@ -40,7 +40,7 @@ I met Outcome 3, algorithmic principles and design trade-offs, by matching each 
 
 I met Outcome 4, well-founded and innovative tools and techniques, by using Collections.binarySearch() correctly against a comparator purpose-built for prefix matching. Module One's original pseudocode only called for a plain last-name search, so building it as a prefix match instead is the one real update to my outcome-coverage plan from this enhancement. I also continued writing new JUnit tests for this enhancement. While running them with coverage, the same way I did in Enhancement One, I found a few paths in the code that weren't covered by the tests and was able to fix those.
 
-I kept building evidence toward Outcome 1 as well, through Javadoc on every new or changed method and commits staged the same way as Enhancement One, each explaining why a change was made. The commits for Enhancement Two can be viewed <a href="https://github.com/maxpayne777/ePortfolio/commits/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">here</a>.
+I kept building evidence toward Outcome 1 as well, through Javadoc on every new or changed method and commits staged the same way as Enhancement One, each explaining why a change was made. The commits for Enhancement Two can be viewed <a href="https://github.com/daltonayoung/ePortfolio/commits/main/Enhancement%202%20-%20Algorithms%20and%20Data%20Structures" target="_blank" rel="noopener noreferrer">here</a>.
 
 ## Reflecting on the Process
 

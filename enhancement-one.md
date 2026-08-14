@@ -6,7 +6,7 @@ permalink: /enhancement-one.html
 
 # Enhancement One: Software Design & Engineering
 
-<a href="https://github.com/maxpayne777/ePortfolio/tree/main/CS-320%20Original%20Artifact" target="_blank" rel="noopener noreferrer">View the original, pre-enhancement artifact</a> &nbsp;|&nbsp; <a href="https://github.com/maxpayne777/ePortfolio/tree/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
+<a href="https://github.com/daltonayoung/ePortfolio/tree/main/CS-320%20Original%20Artifact" target="_blank" rel="noopener noreferrer">View the original, pre-enhancement artifact</a> &nbsp;|&nbsp; <a href="https://github.com/daltonayoung/ePortfolio/tree/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">View the enhanced source code and commit history</a>
 
 ## Describing the Artifact
 
@@ -30,7 +30,7 @@ The Module One plan mapped this enhancement to Outcomes 3, 4, and 1. I met Outco
 
 I met Outcome 4, well-founded and innovative tools and techniques, more thoroughly than I originally planned. The original plan only scoped test-coverage evidence for Enhancements 2 and 3. While building this enhancement, I ran a code coverage tool against my own tests and found a branch that had never actually run, then wrote a test to close it. That is a new update to my outcome-coverage plan, and everything else was met as planned.
 
-I met Outcome 1, collaborative environments, through Javadoc on every new or changed method and through commits staged with messages that explain why a change was made. The commits for Enhancement 1 can be viewed <a href="https://github.com/maxpayne777/ePortfolio/commits/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">here</a>.
+I met Outcome 1, collaborative environments, through Javadoc on every new or changed method and through commits staged with messages that explain why a change was made. The commits for Enhancement 1 can be viewed <a href="https://github.com/daltonayoung/ePortfolio/commits/main/Enhancement%201%20-%20Software%20Design%20and%20Engineering" target="_blank" rel="noopener noreferrer">here</a>.
 
 ## Reflecting on the Process
 
